@@ -1022,7 +1022,7 @@ function browseAutomatically(urls, loadTime, linkNum, sendResponse) {
 		return;
 	}
     
-    //clearData();
+    clearData();
     
     chrome.tabs.create({url: "about:blank"}, function(tab) {            
             setTimeout(function() { browseToNext(urls, urls.length, 
@@ -1058,7 +1058,10 @@ function setUpBrowseToNext(urls, originalListLength, index, loadTime, linkNum, t
     chrome.tabs.remove(tabId);
     
     // Navigate to the next URL in the list (in a new tab)
-    var newurl = "http://" + urls[index];
+    var newurl = urls[index];
+    if (!startsWith(newurl, "http")) {
+        newurl = "http://" + urls[index];
+    }
     chrome.tabs.create({url: newurl}, function(tab) {
             // Let it load for the specified number of seconds before continuing
             setTimeout(function() {browseToNext(urls, originalListLength, index+1, 

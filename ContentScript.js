@@ -57,8 +57,8 @@ chrome.extension.onRequest.addListener(
                         break;
                     }
                 }
-                sendResponse({urls: urls});            
             }
+            sendResponse({urls: urls});
         }    
     }
 );
