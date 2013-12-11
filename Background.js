@@ -794,7 +794,7 @@ function removeLastLoggedTracker(oldUrl, newUrl) {
     
     // remove last tracker instance
     var trackerInstance = trackerList.pop();
-    console.log(oldDomain + " " + newDomain + " " + trackerInstance.domain);
+    //console.log(oldDomain + " " + newDomain + " " + trackerInstance.domain);
     
     // make sure that made sense, else put it back
     if(trackerInstance.domain != newDomain) {
