@@ -34,6 +34,9 @@ var removeCookieDomains = {};
 // (so that decision to block a request or not doesn't get stuck on tab lookup)
 var tabList = {};
 
+// Keep track of previous url of a tab (use on navigation, then update to current url)
+var tabUrlArray = {};
+
 // Keep track of registered add-ons
 var registeredAddons = {}; // name --> link map
 
@@ -119,7 +122,7 @@ function onBeforeSendHeaders(requestDetails) {
     var tracker = false;
     
     // Only proceed if the request came from an open tab
-    if (tabId >= 0) {
+    if (tabId >= 0) {    
         // If there's a cookie, check for cookie tracking
         if (getValueFromDictionaryArray(requestDetails.requestHeaders, "Cookie")) {	
             tracker = checkTrackingForCookieRequest(requestDetails, tabList[tabId]);
@@ -170,6 +173,12 @@ function initializeTabListeners() {
             // (reset this whenever tab loading starts to catch reloads
             // and switches to a new domain)
             if (changeInfo.status == "loading") {
+                
+                // Remove latest logged tracker if we accidentally logged one when this request was made
+                removeLastLoggedTracker(tabUrlArray[tabId], tab.url);
+                // update so we can do this again next time
+                tabUrlArray[tabId] = tab.url;
+                
             	trackersPerTab[tabId] = [];
                 analyticsCandidates[tabId] = [];
             }
@@ -179,6 +188,7 @@ function initializeTabListeners() {
     chrome.tabs.onRemoved.addListener(
         function(tabId, removeInfo) {
             delete tabList[tabId];
+            delete tabUrlArray[tabId];
             // Remove the tab Id and its current trackers
             delete trackersPerTab[tabId];
             delete analyticsCandidates[tabId];
@@ -508,6 +518,11 @@ function checkTrackingForCookieRequest(requestDetails, tab) {
     // If the originating tab is an extension or chrome page, skip it.
     if (startsWith(originatingTabUrl, "chrome"))
         return false;
+        
+    // If the request is to the same domain as the current tab, this is a FIRST PARTY request and we should ignore.
+    if (getDomainFromUrl(requestUrl) == getDomainFromUrl(originatingTabUrl)) {
+        return false;
+    }
 	
 	// extract domains from the URLs
 	var originatingTabDomain = getDomainFromUrl(originatingTabUrl);
@@ -762,6 +777,32 @@ function logTracker(originatingTabDomain, trackerDomain, trackerCategory, tabId,
 	//chrome.browserAction.setBadgeText({text: "track", tabId: tabId});
     
     saveSites();
+}
+
+
+// If we accidentally logged a tracking instance because the user was really navigating the top-level tab,
+// we need to remove it (note that we can't distinguish intentional from automatic top-level redirection...)
+function removeLastLoggedTracker(oldUrl, newUrl) {
+    if (!oldUrl) return;
+    
+    var oldDomain = getDomainFromUrl(oldUrl);
+    var newDomain = getDomainFromUrl(newUrl);
+    
+    var trackerList = sites[oldDomain];
+    
+    if (!trackerList) return;
+    
+    // remove last tracker instance
+    var trackerInstance = trackerList.pop();
+    console.log(oldDomain + " " + newDomain + " " + trackerInstance.domain);
+    
+    // make sure that made sense, else put it back
+    if(trackerInstance.domain != newDomain) {
+        trackerList.push(trackerInstance);
+    }
+    /*else {
+        console.log("REMOVED");
+    }*/
 }
 
 // Save to local storage

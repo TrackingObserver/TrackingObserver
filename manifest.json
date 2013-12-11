@@ -1,9 +1,9 @@
 {
 	"name": "TrackingObserver",
-	"version": "0.1",
+	"version": "1.1",
 	"manifest_version": 2,
 	
-	"description": "A web tracking information platform.",
+	"description": "A browser-based web tracking detection platform.",
 	"icons": {
 		"16": "Icons/16.png",
 		"48": "Icons/48.png",
