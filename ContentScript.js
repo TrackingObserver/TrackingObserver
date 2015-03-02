@@ -107,7 +107,7 @@ function addOrUpdateCookie(cookieName, cookieValue, remove)
 }
 
 // Inspects the call stack, and notifies the background script of a possible category A tracking situation.
-function inspectStackA(cookieString) {
+function inspectStackA() {
   var callstack = [];
   var uri_pattern = /\b((?:[a-z][\w-]+:(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?������]))/ig;
 
