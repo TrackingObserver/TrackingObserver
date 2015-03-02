@@ -107,7 +107,7 @@ function addOrUpdateCookie(cookieName, cookieValue, remove)
 }
 
 // Inspects the call stack, and notifies the background script of a possible category A tracking situation.
-function inspectStack(cookieString) {
+function inspectStackA(cookieString) {
   var callstack = [];
   var uri_pattern = /\b((?:[a-z][\w-]+:(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?������]))/ig;
 
@@ -116,9 +116,7 @@ function inspectStack(cookieString) {
     i.dont.exist += 0; // Will cause exception
   } catch(e) {
       var urls = e.stack.match(uri_pattern);
-      
-      chrome.extension.sendRequest(
-          {type:'categoryA', url : document.URL, stackTrace : urls, cookieString: cookieString});
+      return urls;
   }
 
 }
@@ -129,7 +127,10 @@ function inspectStack(cookieString) {
 // cookies to background script to actually set them in Chrome's cookie store,
 // and need to keep current cookies in page to make them accessible via JavaScript)
 
-var monkeypatchCookieCode = 
+var monkeypatchCookieCode =
+    // Need to inject stack trace into page
+    inspectStackA.toString() +
+                                                                                                                                                                                                
     // Create a cookie store to help replace document.cookie's getter
     'var cookieStoreDiv = document.createElement("div");' +
     'cookieStoreDiv.setAttribute("id","cookieStore");' +
@@ -138,12 +139,12 @@ var monkeypatchCookieCode =
     'cookieStoreDiv.innerText = "{}";' +
     
     // Event to notify background script when a cookie is set using document.cookie's setter
-    'function createEvent(cookieString) { ' + 
-        'document.dispatchEvent( new CustomEvent("setCookieEvent", {detail: {cookieString : cookieString}})); }'+
+    'function createEvent(cookieString, urls) { ' +
+        'document.dispatchEvent( new CustomEvent("setCookieEvent", {detail: {cookieString : cookieString, stackTrace : urls}})); }'+
     
     // Actually overwrite document.cookie
     // On set, create event to notify background script
-    'document.__defineSetter__("cookie", function(cookieString) { createEvent(cookieString); } );' +
+    'document.__defineSetter__("cookie", function(cookieString) { createEvent(cookieString, inspectStackA()); } );' +
     // On get, parse in-page cookie store into expected string
     'document.__defineGetter__("cookie", function() {' + 
             'var cookieStore = JSON.parse(cookieStoreDiv.innerText);' +
@@ -177,12 +178,15 @@ chrome.extension.sendRequest({type : 'lookupCookies', url : document.URL},
 // Send message to background script to actually set the cookie.
 document.addEventListener('setCookieEvent', 
     function(e) {
+        var cookieVal = e.detail.cookieString;
+        var stackTraceVal = e.detail.stackTrace;
+                          
         // Store cookie in in-page cookie store
-        addOrUpdateCookieFromString(e.detail.cookieString);
-        // Inspect stack for categoryA trackers
-        inspectStack(e.detail.cookieString);
+        addOrUpdateCookieFromString(cookieVal);
         
         chrome.extension.sendRequest(
-            {type:'setCookie', url : document.URL, cookieString:e.detail.cookieString});
+            {type:'setCookie', url : document.URL, cookieString : cookieVal});
     
+        chrome.extension.sendRequest(
+            {type:'categoryA', url : document.URL, stackTrace : stackTraceVal, cookieString : cookieVal});
     });
